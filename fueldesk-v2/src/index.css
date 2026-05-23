@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #10b981;
+    --primary-dark: #059669;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body, #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+
+  .dark body {
+    background-color: #0f172a;
+    color: #f1f5f9;
+  }
+}
+
+@layer components {
+  /* Card */
+  .card {
+    @apply bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-4;
+  }
+
+  /* Inputs */
+  .input {
+    @apply w-full px-3 py-2.5 rounded-md border border-slate-200 dark:border-slate-600
+           bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100
+           placeholder-slate-400 text-sm
+           focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+           transition-colors duration-150;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    @apply bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700
+           text-white font-medium px-4 py-2.5 rounded-lg text-sm
+           transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed
+           flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600
+           text-slate-700 dark:text-slate-200 font-medium px-4 py-2.5 rounded-lg text-sm
+           transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-rose-500 hover:bg-rose-600 text-white font-medium px-4 py-2.5 rounded-lg text-sm
+           transition-all duration-150 flex items-center justify-center gap-2;
+  }
+
+  /* Badges */
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-green  { @apply badge bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400; }
+  .badge-red    { @apply badge bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-400; }
+  .badge-blue   { @apply badge bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400; }
+  .badge-amber  { @apply badge bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400; }
+  .badge-gray   { @apply badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300; }
+  .badge-purple { @apply badge bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400; }
+
+  /* Stat card */
+  .stat-card {
+    @apply card flex flex-col gap-1;
+  }
+  .stat-value {
+    @apply text-2xl font-bold text-slate-900 dark:text-white;
+  }
+  .stat-label {
+    @apply text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide;
+  }
+
+  /* Skeleton */
+  .skeleton {
+    @apply bg-slate-200 dark:bg-slate-700 rounded animate-pulse;
+  }
+
+  /* Page container */
+  .page {
+    @apply min-h-screen bg-slate-50 dark:bg-slate-900 pb-24 md:pb-6;
+  }
+
+  /* Section header */
+  .section-title {
+    @apply text-base font-semibold text-slate-800 dark:text-slate-100 mb-3;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300
+           flex items-center justify-center font-semibold text-sm flex-shrink-0;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+
+/* Transition for dark mode */
+* { transition: background-color 0.15s ease, border-color 0.15s ease, color 0.1s ease; }
+
+/* ─── Print styles ───────────────────────────────────────────
+   Reports.tsx adds the `printable` class to its root and wraps
+   anything that should be hidden in print (filter chips, button
+   bar, recharts tooltips) with `no-print`. We also hide the global
+   chrome (Sidebar, BottomNav, Header) by class so the print view
+   shows only the report content. */
+@media print {
+  /* Hide app chrome */
+  aside, nav.md\:hidden, header { display: none !important; }
+  /* Anything explicitly marked non-printable */
+  .no-print { display: none !important; }
+  /* Reset transitions and dark backgrounds for crisp print output */
+  body { background: white !important; color: #0f172a !important; }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #e2e8f0 !important;
+    background: white !important;
+    page-break-inside: avoid;
+  }
+  .printable { padding: 0 !important; }
+  /* Recharts ResponsiveContainer is an SVG — let it size to content */
+  .recharts-responsive-container { width: 100% !important; height: 240px !important; }
+}

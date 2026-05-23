@@ -1,0 +1,597 @@
+{
+  "info": {
+    "name": "FuelDesk v2",
+    "_postman_id": "5d0a5c38-fueldesk-v2-collection",
+    "description": "REST collection covering auth, platform-owner RPCs, tenant analytics RPCs, fuel-pricing & salary RPCs, plus representative direct-table reads against your Supabase backend.\n\nAll requests are pre-wired to the env variables `supabase_url`, `anon_key`, and `access_token`. Use the **Auth → Sign in (email)** request first; its test script captures the JWT into `access_token` automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "variable": [],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Sign in (email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "  pm.environment.set('access_token', json.access_token);",
+                  "  pm.environment.set('user_id',      json.user && json.user.id);",
+                  "  pm.test('captured access_token', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "} else {",
+                  "  pm.test('login failed: ' + (json.error_description || json.msg || 'unknown'),",
+                  "          () => pm.expect.fail());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+              "host": ["{{supabase_url}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [{ "key": "grant_type", "value": "password" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{login_email}}\",\n  \"password\": \"{{login_password}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Sign in (mobile → email via RPC)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "apikey",       "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/get_email_by_phone",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","get_email_by_phone"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"input_phone\": \"9876543210\" }" }
+          }
+        },
+        {
+          "name": "Refresh session",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "apikey",       "value": "{{anon_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/token?grant_type=refresh_token",
+              "host": ["{{supabase_url}}"], "path": ["auth","v1","token"],
+              "query": [{ "key": "grant_type", "value": "refresh_token" }]
+            },
+            "body": { "mode": "raw", "raw": "{ \"refresh_token\": \"{{refresh_token}}\" }" }
+          }
+        },
+        {
+          "name": "Get current user (whoami)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/auth/v1/user",
+              "host": ["{{supabase_url}}"], "path": ["auth","v1","user"]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Permissions (RBAC)",
+      "item": [
+        {
+          "name": "has_permission (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/has_permission",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","has_permission"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"uid\": \"{{user_id}}\", \"perm\": \"fuel_price.update\" }" }
+          }
+        },
+        {
+          "name": "List role defaults",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/role_permissions?select=role,permission&order=role",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","role_permissions"],
+              "query": [
+                { "key": "select", "value": "role,permission" },
+                { "key": "order",  "value": "role" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Platform Owner",
+      "item": [
+        {
+          "name": "platform_global_stats (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/platform_global_stats",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","platform_global_stats"]
+            },
+            "body": { "mode": "raw", "raw": "{}" }
+          }
+        },
+        {
+          "name": "v_pump_health (top by 7-day revenue)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/v_pump_health?select=*&order=revenue_7d.desc&limit=10",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","v_pump_health"],
+              "query": [
+                { "key": "select", "value": "*" },
+                { "key": "order",  "value": "revenue_7d.desc" },
+                { "key": "limit",  "value": "10" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "create_pump_with_super_admin (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/create_pump_with_super_admin",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","create_pump_with_super_admin"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_name\": \"Demo Pump\",\n  \"p_address\": \"123 Main St\",\n  \"p_city\": \"Bengaluru\",\n  \"p_state\": \"KA\",\n  \"p_subscription_plan\": \"BASIC\",\n  \"p_monthly_fee\": 999,\n  \"p_owner_auth_id\": \"REPLACE_WITH_AUTH_USER_UUID\",\n  \"p_owner_email\": \"superadmin@example.com\",\n  \"p_owner_first_name\": \"Demo\",\n  \"p_owner_last_name\": \"Admin\",\n  \"p_owner_phone\": \"9876543210\"\n}"
+            },
+            "description": "Atomic: insert pump + super_admin profile + seed defaults. Caller must be PLATFORM_OWNER. The auth user must already exist in auth.users — use the Auth → Sign up flow in your client first to mint it."
+          }
+        },
+        {
+          "name": "platform_suspend_pump (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/platform_suspend_pump",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","platform_suspend_pump"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\", \"p_reason\": \"non-payment\" }" }
+          }
+        },
+        {
+          "name": "platform_restore_pump (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/platform_restore_pump",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","platform_restore_pump"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\" }" }
+          }
+        },
+        {
+          "name": "platform_delete_pump (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/platform_delete_pump",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","platform_delete_pump"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\", \"p_force\": false }" }
+          }
+        },
+        {
+          "name": "seed_pump_defaults (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/seed_pump_defaults",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","seed_pump_defaults"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\" }" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Fuel & Pricing",
+      "item": [
+        {
+          "name": "List fuel_types",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/fuel_types?pump_id=eq.{{pump_id}}&select=*&order=code",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","fuel_types"],
+              "query": [
+                { "key": "pump_id", "value": "eq.{{pump_id}}" },
+                { "key": "select",  "value": "*" },
+                { "key": "order",   "value": "code" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Insert fuel_price (auto-closes previous)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Prefer",        "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/fuel_prices",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","fuel_prices"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pump_id\": \"{{pump_id}}\",\n  \"fuel_type_id\": \"REPLACE_WITH_FUEL_TYPE_UUID\",\n  \"purchase_price\": 89.50,\n  \"selling_price\": 103.50\n}"
+            }
+          }
+        },
+        {
+          "name": "get_fuel_price_at (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/get_fuel_price_at",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","get_fuel_price_at"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_fuel_type_id\": \"REPLACE_WITH_FUEL_TYPE_UUID\",\n  \"p_at\": \"2026-05-20T12:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "v_readings_priced (today)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/v_readings_priced?pump_id=eq.{{pump_id}}&reading_date=eq.{{today}}&select=*",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","v_readings_priced"],
+              "query": [
+                { "key": "pump_id",      "value": "eq.{{pump_id}}" },
+                { "key": "reading_date", "value": "eq.{{today}}" },
+                { "key": "select",       "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "day_profit (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/day_profit",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","day_profit"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\", \"p_date\": \"{{today}}\" }" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Salary Advances",
+      "item": [
+        {
+          "name": "Insert advance",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Prefer",        "value": "return=representation" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/salary_advances",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","salary_advances"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pump_id\": \"{{pump_id}}\",\n  \"user_id\": \"REPLACE_WITH_EMPLOYEE_UUID\",\n  \"amount\": 500,\n  \"for_month\": 5,\n  \"for_year\": 2026,\n  \"granted_by\": \"{{user_id}}\",\n  \"notes\": \"Festival\"\n}"
+            }
+          }
+        },
+        {
+          "name": "v_salary_month_summary (current month)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/v_salary_month_summary?pump_id=eq.{{pump_id}}&year=eq.{{current_year}}&month=eq.{{current_month}}&select=*",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","v_salary_month_summary"],
+              "query": [
+                { "key": "pump_id", "value": "eq.{{pump_id}}" },
+                { "key": "year",    "value": "eq.{{current_year}}" },
+                { "key": "month",   "value": "eq.{{current_month}}" },
+                { "key": "select",  "value": "*" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "mark_advances_deducted (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/mark_advances_deducted",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","mark_advances_deducted"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_pump_id\": \"{{pump_id}}\",\n  \"p_user_id\": \"REPLACE_WITH_EMPLOYEE_UUID\",\n  \"p_month\": {{current_month}},\n  \"p_year\":  {{current_year}}\n}"
+            }
+          }
+        },
+        {
+          "name": "cancel_advance (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/cancel_advance",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","cancel_advance"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_advance_id\": \"REPLACE_WITH_ADVANCE_UUID\", \"p_reason\": \"entered in error\" }" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Tenant Analytics",
+      "item": [
+        {
+          "name": "tenant_analytics_daily (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/tenant_analytics_daily",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","tenant_analytics_daily"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_pump_id\": \"{{pump_id}}\",\n  \"p_from_date\": \"{{from_date}}\",\n  \"p_to_date\": \"{{today}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "tenant_top_employees (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/tenant_top_employees",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","tenant_top_employees"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_pump_id\": \"{{pump_id}}\",\n  \"p_from_date\": \"{{from_date}}\",\n  \"p_to_date\": \"{{today}}\",\n  \"p_limit\": 10\n}"
+            }
+          }
+        },
+        {
+          "name": "tenant_fuel_mix (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/tenant_fuel_mix",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","tenant_fuel_mix"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"p_pump_id\": \"{{pump_id}}\",\n  \"p_from_date\": \"{{from_date}}\",\n  \"p_to_date\": \"{{today}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "tenant_credit_aging (RPC)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type",  "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/rpc/tenant_credit_aging",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","rpc","tenant_credit_aging"]
+            },
+            "body": { "mode": "raw", "raw": "{ \"p_pump_id\": \"{{pump_id}}\" }" }
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Direct Tables (sample reads)",
+      "item": [
+        {
+          "name": "users (same pump)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/users?pump_id=eq.{{pump_id}}&deleted_at=is.null&select=id,first_name,last_name,role,is_active,is_blocked,phone&order=role",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","users"],
+              "query": [
+                { "key": "pump_id",    "value": "eq.{{pump_id}}" },
+                { "key": "deleted_at", "value": "is.null" },
+                { "key": "select",     "value": "id,first_name,last_name,role,is_active,is_blocked,phone" },
+                { "key": "order",      "value": "role" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "daily_sales (last 7 days)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/daily_sales?pump_id=eq.{{pump_id}}&sale_date=gte.{{from_date}}&select=*&order=sale_date.desc",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","daily_sales"],
+              "query": [
+                { "key": "pump_id",   "value": "eq.{{pump_id}}" },
+                { "key": "sale_date", "value": "gte.{{from_date}}" },
+                { "key": "select",    "value": "*" },
+                { "key": "order",     "value": "sale_date.desc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "audit_log (latest 50)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "apikey",        "value": "{{anon_key}}" },
+              { "key": "Authorization", "value": "Bearer {{access_token}}" }
+            ],
+            "url": {
+              "raw": "{{supabase_url}}/rest/v1/audit_log?pump_id=eq.{{pump_id}}&select=*&order=created_at.desc&limit=50",
+              "host": ["{{supabase_url}}"], "path": ["rest","v1","audit_log"],
+              "query": [
+                { "key": "pump_id", "value": "eq.{{pump_id}}" },
+                { "key": "select",  "value": "*" },
+                { "key": "order",   "value": "created_at.desc" },
+                { "key": "limit",   "value": "50" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

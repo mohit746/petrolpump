@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "FuelDesk v2 Dev Server",
+			"type": "shell",
+			"command": "npx vite --port 5175",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

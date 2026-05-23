@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "env": {
+    "SUPABASE_URL": "https://aqtpuxjcotjukutezmbp.supabase.co",
+    "SUPABASE_ANON_KEY": "@supabase_anon_key",
+    "SUPABASE_SERVICE_KEY": "@supabase_service_key",
+    "JWT_SECRET": "@jwt_secret"
+  }
+}
